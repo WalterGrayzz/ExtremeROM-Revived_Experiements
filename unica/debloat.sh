@@ -69,21 +69,6 @@ system/app/MDMApp
 system/app/PlayAutoInstallConfig
 system/app/Rampart
 system/app/SamsungPassAutofill_v1
-system/app/SamsungTTSVoice_ar_AE_m00
-system/app/SamsungTTSVoice_de_DE_f00
-system/app/SamsungTTSVoice_en_GB_f00
-system/app/SamsungTTSVoice_es_ES_f00
-system/app/SamsungTTSVoice_es_MX_f00
-system/app/SamsungTTSVoice_es_US_f00
-system/app/SamsungTTSVoice_fr_FR_f00
-system/app/SamsungTTSVoice_hi_IN_f00
-system/app/SamsungTTSVoice_id_ID_f00
-system/app/SamsungTTSVoice_it_IT_f00
-system/app/SamsungTTSVoice_pl_PL_f00
-system/app/SamsungTTSVoice_pt_BR_f00
-system/app/SamsungTTSVoice_ru_RU_f00
-system/app/SamsungTTSVoice_th_TH_f00
-system/app/SamsungTTSVoice_vi_VN_f00
 system/app/SilentLog
 system/app/SimAppDialog
 system/app/Traceur
@@ -106,6 +91,7 @@ system/etc/permissions/privapp-permissions-com.samsung.android.ipsgeofence.xml
 system/etc/permissions/privapp-permissions-com.samsung.android.samsungpass.xml
 system/etc/permissions/privapp-permissions-com.samsung.android.samsungpositioning.xml
 system/etc/permissions/privapp-permissions-com.samsung.android.spayfw.xml
+system/etc/permissions/privapp-permissions-com.samsung.android.svcagent.xml
 system/etc/permissions/privapp-permissions-com.samsung.oda.service.xml
 system/etc/permissions/privapp-permissions-com.sec.android.diagmonagent.xml
 system/etc/permissions/privapp-permissions-com.sec.android.soagent.xml
@@ -150,10 +136,20 @@ system/priv-app/SamsungPositioning
 system/priv-app/SKMSAgent
 system/priv-app/SOAgent76
 system/priv-app/SPPPushClient
+system/priv-app/SVCAgent
 system/priv-app/StickerFaceARAvatar
 system/priv-app/YourPhone_P1_5
 system/app/BixbyWakeup
 system/priv-app/Bixby
+"
+
+#Language Packs debloat
+SYSTEM_DEBLOAT+="$(find "$WORK_DIR/system" -type d -name "*TTSVoice*" | sed "s|$WORK_DIR/system/||g")"
+
+
+SYSTEM_EXT_DEBLOAT+="
+framework/org.carconnectivity.android.digitalkey.rangingintent.jar
+framework/org.carconnectivity.android.digitalkey.secureelement.jar
 "
 
 PRISM_DEBLOAT+="

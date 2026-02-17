@@ -91,7 +91,7 @@ system/lib64/libsuperresolutionraw_wrapper_v2.camera.samsung.so
 "
 for blob in $BLOBS_LIST
 do
-    ADD_TO_WORK_DIR "b0sxxx" "system" "$blob" 0 0 644 "u:object_r:system_lib_file:s0" &
+    ADD_TO_WORK_DIR "p3sxxx" "system" "$blob" 0 0 644 "u:object_r:system_lib_file:s0" &
 done
 
 BLOBS_LIST="

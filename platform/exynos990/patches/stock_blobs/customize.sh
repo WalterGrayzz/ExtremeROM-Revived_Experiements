@@ -1,4 +1,4 @@
-# S25 FE OneUI 7 -> SoundBooster 2080
+# S25 FE OneUI 8 -> SoundBooster 2080
 # S20 Series -> SoundBooster 1050
 LOG_STEP_IN "- Replacing SoundBooster"
 DELETE_FROM_WORK_DIR "system" "system/lib64/lib_SoundBooster_ver2080.so"

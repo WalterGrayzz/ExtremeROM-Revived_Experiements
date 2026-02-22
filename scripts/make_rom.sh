@@ -145,10 +145,79 @@ if $BUILD_ROM; then
         "$SRC_DIR/scripts/internal/apply_modules.sh" "$SRC_DIR/unica/mods" || exit 1
         LOG_STEP_OUT
     fi
+  ## =======================================================
+    # GhasemzadehFard-dev Patch: Global Smart Call (Prism+Whitepages)
+    # =======================================================
+    echo ">> [GhasemzadehFard-dev] Injecting Smart Call Features..."
 
+    FF_FILE="$WORK_DIR/system/system/etc/floating_feature.xml"
+    if [ -f "$FF_FILE" ]; then
+        sed -i '/SEC_FLOATING_FEATURE_CONTACTS_SUPPORT_SMART_CALL/d' "$FF_FILE"
+        sed -i '/SEC_FLOATING_FEATURE_SMARTCALL_CONFIG_SVC_PROVIDER/d' "$FF_FILE"
+        sed -i 's/<\/SecFloatingFeatureSet>/    <SEC_FLOATING_FEATURE_CONTACTS_SUPPORT_SMART_CALL>TRUE<\/SEC_FLOATING_FEATURE_CONTACTS_SUPPORT_SMART_CALL>\n    <SEC_FLOATING_FEATURE_SMARTCALL_CONFIG_SVC_PROVIDER>whitepages<\/SEC_FLOATING_FEATURE_SMARTCALL_CONFIG_SVC_PROVIDER>\n<\/SecFloatingFeatureSet>/' "$FF_FILE"
+        echo ">> Floating Feature patched."
+    fi
+
+    # 2. Global CSC Patching (Targets BOTH optics AND prism)
+    find "$WORK_DIR/optics" "$WORK_DIR/prism" -type f -name "cscfeature.xml" 2>/dev/null | while read -r CSC_FILE; do
+        sed -i '/CscFeature_Common_ConfigSvcProviderForUnknownNumber/d' "$CSC_FILE"
+        sed -i '/CscFeature_Contact_SupportSmartCall/d' "$CSC_FILE"
+        # Using Salvo's Whitepages bypass trick
+        sed -i 's/<\/FeatureSet>/    <CscFeature_Common_ConfigSvcProviderForUnknownNumber>whitepages,whitepages,off<\/CscFeature_Common_ConfigSvcProviderForUnknownNumber>\n    <CscFeature_Contact_SupportSmartCall>true<\/CscFeature_Contact_SupportSmartCall>\n<\/FeatureSet>/' "$CSC_FILE"
+    done
+    echo ">> All CSC files in Optics & Prism patched."
+
+    PROP_FILE="$WORK_DIR/system/system/build.prop"
+    if [ -f "$PROP_FILE" ]; then
+        sed -i '/ro.config.smart_call_supported/d' "$PROP_FILE"
+        echo "ro.config.smart_call_supported=true" >> "$PROP_FILE"
+    fi
+    # =======================================================
+    
     if [ -d "$APKTOOL_DIR" ]; then
         LOG_STEP_IN true "Building APKs/JARs"
-
+# =======================================================
+        # GhasemzadehFard-dev Inline Smali Hook Injector
+        # =======================================================
+        CSC_SMALI=$(find "$APKTOOL_DIR" -type f -path "*/framework.jar/*/com/samsung/android/feature/SemCscFeature.smali" 2>/dev/null)
+        if [ -n "$CSC_SMALI" ]; then
+            echo ">> Injecting Inline Smali Hooks into $CSC_SMALI"
+            awk '
+            /^\.method public whitelist getString\(Ljava\/lang\/String;.*\)Ljava\/lang\/String;/ { in_str=1; print; next }
+            in_str && /\.locals/ {
+                print
+                print "    # GhasemzadehFard Hook"
+                print "    const-string v0, \"CscFeature_Common_ConfigSvcProviderForUnknownNumber\""
+                print "    invoke-virtual {p1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z"
+                print "    move-result v0"
+                print "    if-eqz v0, :cond_bypass_" NR
+                print "    const-string v0, \"whitepages,whitepages,off\""
+                print "    return-object v0"
+                print "    :cond_bypass_" NR
+                in_str=0
+                next
+            }
+            /^\.method public whitelist getBoolean\(Ljava\/lang\/String;.*\)Z/ { in_bool=1; print; next }
+            in_bool && /\.locals/ {
+                print
+                print "    # GhasemzadehFard Hook"
+                print "    const-string v0, \"CscFeature_Contact_SupportSmartCall\""
+                print "    invoke-virtual {p1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z"
+                print "    move-result v0"
+                print "    if-eqz v0, :cond_bypass_" NR
+                print "    const/4 v0, 0x1"
+                print "    return v0"
+                print "    :cond_bypass_" NR
+                in_bool=0
+                next
+            }
+            { print }
+            ' "$CSC_SMALI" > "${CSC_SMALI}.tmp" && mv "${CSC_SMALI}.tmp" "$CSC_SMALI"
+            echo ">> Smali Hooks Injected Successfully!"
+        else
+            echo ">> ERROR: SemCscFeature.smali not found. Skipping Smali Patch."
+        fi
+        # =======================================================
         while IFS= read -r f; do
             f="${f/$APKTOOL_DIR\//}"
             PARTITION="$(cut -d "/" -f 1 -s <<< "$f")"
@@ -163,6 +232,7 @@ if $BUILD_ROM; then
         wait $(jobs -p) || exit 1
 
         LOG_STEP_OUT
+
     fi
 
     echo -n "$(GET_WORK_DIR_HASH)" > "$WORK_DIR/.completed"

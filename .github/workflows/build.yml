@@ -16,7 +16,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
-
     permissions:
       contents: write
 
@@ -24,6 +23,10 @@ jobs:
       fail-fast: false
       matrix:
         target: [x1s, y2s, z3s, c1s, c2s, r8s]
+
+    env:
+      RELEASE_REPO: "ArtisanROM/rom_resources"
+      GH_TOKEN: ${{ secrets.PAT }}
 
     steps:
       - name: Checkout repo
@@ -105,17 +108,20 @@ jobs:
           source ./buildenv.sh ${{ matrix.target }}
           ./scripts/make_rom.sh --force
 
-      - name: Upload, Split, and Handle XML
+      - name: Upload to Pixeldrain, GitHub Release, Split, XML
         env:
           PIXELDRAIN_API_KEY: ${{ secrets.PD_API }}
-          BUILD_TYPE: ${{ github.event.inputs.build_type }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT }}
           RELEASE_REPO: "ArtisanROM/rom_resources"
+          BUILD_TYPE: ${{ github.event.inputs.build_type }}
         run: |
-          mkdir split_tmp
+          mkdir -p split_tmp
 
           for file in out/*.zip; do
-            [ ! -f "$file" ] && echo "No ZIP found." && exit 0
+            if [ ! -f "$file" ]; then
+              echo "No ZIP files found to upload."
+              continue
+            fi
 
             FILE_NAME=$(basename "$file")
             FILE_SIZE=$(stat -c%s "$file")
@@ -123,20 +129,17 @@ jobs:
             VERSION=$(echo "$FILE_NAME" | grep -oP '\d+\.\d+\.\d+')
             BUILD_DATE=$(date +%Y-%m-%d)
 
-            echo "Uploading to Pixeldrain (if required)..."
+            # Always upload to Pixeldrain
+            echo "Uploading $FILE_NAME to Pixeldrain..."
+            RESPONSE=$(curl -s -T "$file" -u :$PIXELDRAIN_API_KEY https://pixeldrain.com/api/file/)
+            FILE_ID=$(echo "$RESPONSE" | jq -r '.id')
+            PIXEL_URL="https://pixeldrain.com/u/$FILE_ID"
+            echo "Pixeldrain URL: $PIXEL_URL"
 
-            PIXEL_URL=""
-            if [ "$BUILD_TYPE" = "release" ] || [ "$BUILD_TYPE" = "debug" ]; then
-              RESPONSE=$(curl -s -T "$file" -u :$PIXELDRAIN_API_KEY https://pixeldrain.com/api/file/)
-              FILE_ID=$(echo "$RESPONSE" | jq -r '.id')
-              PIXEL_URL="https://pixeldrain.com/u/$FILE_ID"
-              echo "Pixeldrain URL: $PIXEL_URL"
-            fi
-
+            # Split + GitHub Release for release + test
             PART_LINKS=()
-
             if [ "$BUILD_TYPE" = "release" ] || [ "$BUILD_TYPE" = "test" ]; then
-              echo "Splitting into 6 parts..."
+              echo "Splitting $FILE_NAME into 6 parts..."
               cd split_tmp
               split -d -n 6 "../$file" "${FILE_NAME}.part_"
               cd ..
@@ -144,44 +147,45 @@ jobs:
               TAG_NAME="v$VERSION-${{ matrix.target }}"
               RELEASE_NAME="${VERSION}-${{ matrix.target }}-${BUILD_DATE}"
 
+              echo "Creating GitHub Release: $RELEASE_NAME"
+
               RELEASE_DATA=$(jq -n \
                 --arg tag "$TAG_NAME" \
                 --arg name "$RELEASE_NAME" \
                 '{ tag_name: $tag, name: $name, draft: false, prerelease: false }')
 
-              RELEASE_RESPONSE=$(curl -s \
-                -X POST \
-                -H "Authorization: token '"$GITHUB_TOKEN"'" \
+              RELEASE_RESPONSE=$(curl -s -X POST \
+                -H "Authorization: token $GH_TOKEN" \
                 -H "Content-Type: application/json" \
                 -d "$RELEASE_DATA" \
                 https://api.github.com/repos/$RELEASE_REPO/releases)
 
               RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
-
+              if [ "$RELEASE_ID" = "null" ]; then
+                echo "ERROR: Release not created. Check GH_TOKEN and permissions."
+                exit 1
+              fi
               echo "Release created: $RELEASE_ID"
 
+              # Upload all split parts
               for part in split_tmp/*; do
                 PART_NAME=$(basename "$part")
-
-                UPLOAD_RESPONSE=$(curl -s \
-                  -X POST \
-                  -H "Authorization: token $GITHUB_TOKEN" \
+                UPLOAD_RESPONSE=$(curl -s -X POST \
+                  -H "Authorization: token $GH_TOKEN" \
                   -H "Content-Type: application/octet-stream" \
                   --data-binary @"$part" \
                   "https://uploads.github.com/repos/$RELEASE_REPO/releases/$RELEASE_ID/assets?name=$PART_NAME")
-
                 PART_URL=$(echo "$UPLOAD_RESPONSE" | jq -r '.browser_download_url')
                 PART_LINKS+=("$PART_URL")
               done
             fi
 
+            # Generate OTA XML for release only
             if [ "$BUILD_TYPE" = "release" ]; then
-              echo "Creating XML..."
-
-              git clone https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} updater_repo
+              echo "Generating OTA XML..."
+              git clone https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }} updater_repo
               cd updater_repo
               git checkout main
-
               mkdir -p updater
               XML_FILE="updater/${{ matrix.target }}.xml"
 
@@ -211,7 +215,6 @@ jobs:
               git commit -m "updater: ${{ matrix.target }}.xml: Update to $VERSION" || true
               git pull --rebase origin main
               git push origin main
-
               cd ..
             fi
           done

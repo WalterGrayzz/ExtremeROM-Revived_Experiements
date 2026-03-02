@@ -1,5 +1,23 @@
 # ExtremeROM changelog
 
+# 3.0.6
+- This update was made possible thx to @Ghasemzadehfard-Dev
+- Fix SvstemUI crash on r8s (thx @GhasemzadehFard-Dev)
+- Fix Termux Crash (thx @chasemzadehFard-Dev)
+- Add RAM Plus fully to r8s (thx @GhasemzadehFard-Dev)
+- Add S26U fake device image
+- Updated base firmware to S25 FE February Security Patch
+
+# 3.0.5
+- Add Viper4Android
+- Add more apps to debloat
+- Fix RAM Plus (thx @GhasemzadehFard-Dev)
+- Fix termux reboot on kill (thx @GhasemzadehFard-Dev)
+- Fix Face Recognition on r8s (thx @GhasemzadehFard-Dev)
+- Bypass CSC and fix Hiya (thx @GhasemzadehFard-Dev)
+- Keep optics and prism EXT4 (thx @GhasemzadehFard-Dev)
+- This update would not be possible without @GhasemzadehFard-Dev
+
 # 3.0.1
 - Fixed reboot on call end (thx @GhasemzadehFard-Dev)
 - Add logo and fix bugs in the updater app

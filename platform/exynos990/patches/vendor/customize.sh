@@ -17,24 +17,28 @@ do
     DELETE_FROM_WORK_DIR "vendor" "$blob"
 done
 
-# Update Vibrator/RIL/Face/WPA HALs
-# We exclude r8s (S20 FE Exynos) to maintain stability and fix Issue #70
+# ==========================================
+# 1. RESTORE ALL VENDOR FEATURES
+# These are the files that make Face Recognition and Vibration work
+# ==========================================
+ADD_TO_WORK_DIR "p3sxxx" "vendor" "bin/hw/vendor.samsung.hardware.biometrics.face@3.0-service"
+ADD_TO_WORK_DIR "p3sxxx" "vendor" "bin/hw/vendor.samsung.hardware.vibrator-service"
+ADD_TO_WORK_DIR "p3sxxx" "vendor" "lib64"
+ADD_TO_WORK_DIR "p3sxxx" "vendor" "etc/init"
+ADD_TO_WORK_DIR "p3sxxx" "vendor" "etc/vintf"
+
+# ==========================================
+# 2. TERMUX STABILITY FIX (The Exclusion)
+# We exclude ONLY wpa_supplicant for r8s to fix Issue #70 (Kernel Panic)
+# ==========================================
 if [[ "$TARGET_CODENAME" != "r8s" ]]; then
-    ADD_TO_WORK_DIR "p3sxxx" "vendor" "bin/hw/vendor.samsung.hardware.biometrics.face@3.0-service"
-    ADD_TO_WORK_DIR "p3sxxx" "vendor" "bin/hw/vendor.samsung.hardware.vibrator-service"
-    ADD_TO_WORK_DIR "p3sxxx" "vendor" "lib64"
-    ADD_TO_WORK_DIR "p3sxxx" "vendor" "etc/init"
-    ADD_TO_WORK_DIR "p3sxxx" "vendor" "etc/vintf"
+    # This binary from p3sxxx is unstable on S20 FE (r8s)
     ADD_TO_WORK_DIR "p3sxxx" "vendor" "bin/hw/wpa_supplicant"
 fi
 
-# WPA Supplicant HAL
-# We exclude r8s (S20 FE Exynos) to fix Issue #70 (Kernel Panic on Termux termination)
-if [[ "$TARGET_CODENAME" != "r8s" ]]; then
-    ADD_TO_WORK_DIR "p3sxxx" "vendor" "bin/hw/wpa_supplicant"
-fi
-
-# Light HAL
+# ==========================================
+# 3. Light HAL (Blocked for r8s to ensure stability)
+# ==========================================
 if [[ "$TARGET_CODENAME" != "r8s" ]]; then
     ADD_TO_WORK_DIR "p3sxxx" "vendor" "bin/hw/vendor.samsung.hardware.light-service"
     ADD_TO_WORK_DIR "p3sxxx" "vendor" "lib64/android.hardware.light-V1-ndk_platform.so"

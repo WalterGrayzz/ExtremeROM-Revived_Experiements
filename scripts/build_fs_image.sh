@@ -158,10 +158,10 @@ PREPARE_SCRIPT()
 
 if [[ "$*" == *"optics"* || "$*" == *"prism"* || "$*" == *"odm"* ]]; then
     FS_TYPE="ext4"
-    echo "⚡ [Builder] Keeping partition as EXT4 to preserve CSC/fstab compatibility..."
+    echo ""
 else
     FS_TYPE="erofs"
-    echo "🗜️ [Builder] Compressing partition as EROFS..."
+    echo ""
 fi
     if [[ "$FS_TYPE" != "ext4" ]] && \
             [[ "$FS_TYPE" != "f2fs" ]] && \

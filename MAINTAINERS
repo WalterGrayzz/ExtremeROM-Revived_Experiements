@@ -4,6 +4,7 @@ List of maintainers
 Exynos 990
 M: ExtremeXT (@ExtremeXT) OG
 M: Giulia (@Android-Artisan)
+M: ghasemzadehfard_dev (@ghasemzadehfard_dev)
 S: Maintained
 F: platform/exynos9830/*
 F: target/c1s/*

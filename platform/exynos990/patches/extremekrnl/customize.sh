@@ -50,13 +50,20 @@ REPLACE_KERNEL_BINARIES()
     [[ ! -d "$KERNEL_TMP_DIR" ]] && mkdir -p "$KERNEL_TMP_DIR"
 
     if [[ -d "$KERNEL_TMP_DIR/.git" ]]; then
-        LOG "- Existing git repo found, trying to pull latest changes"
-        if ! SAFE_PULL_CHANGES; then
-            ABORT "Could not pull latest Kernel changes. If you hold local changes, please rebase to the new base. If not, cleaning the kernel_tmp_dir should suffice."
-        fi
+        # If the kernel repository already exists, navigate into it
+        cd "$KERNEL_TMP_DIR" || exit
+        
+        # Fetch the latest changes from the remote server (extremely fast)
+        git fetch
+        
+        # Force the local code to exactly match the remote, preventing any conflict errors
+        git reset --hard FETCH_HEAD
+        
+        # Return to the previous directory to continue the build process
+        cd - > /dev/null || exit
     else
-        LOG "- Cloning ExtremeKernel"
-        EVAL "git clone --branch bpf111 --single-branch --recurse-submodules "$EXTREMEKRNL_REPO" "$KERNEL_TMP_DIR""
+        # If the kernel directory doesn't exist, clone it from scratch
+        EVAL "git clone --branch bpf111 --single-branch --recurse-submodules \"$EXTREMEKRNL_REPO\" \"$KERNEL_TMP_DIR\""
     fi
 
     LOG "- Running the kernel build script."
